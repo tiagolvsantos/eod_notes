@@ -1,0 +1,99 @@
+---
+title: "TANOS Commodities Correlation"
+output:
+  word_document: default
+---
+
+#Compile Libraries and data
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(quantmod)
+library(ggcorrplot)
+library(RColorBrewer)
+library(quantmod)
+library(PerformanceAnalytics)
+library(stocks)
+library(Quandl)
+library(Quandl)
+library(hrbrthemes)
+
+days = 1427 #20-02-2020 
+cycleCounter = 0
+
+
+final_df <- as.data.frame(head(Quandl( "CHRIS/CME_ES1", api_key="YOUR_API_KEY"),n=days)[,"Settle"])
+colnames(final_df) = c("ES1")
+
+tickerListQuandl = c(
+  "CHRIS/ICE_DX1", #Dollar
+  "CHRIS/CME_PA1", #Palladium
+  "CHRIS/CME_GC1", #Gold
+  "CHRIS/CME_SI1", #Silver
+  "CHRIS/CME_HG1", #Copper
+  "CHRIS/MCX_ZN1", #Zinc
+  "CHRIS/CME_CL1", #WTI
+  "CHRIS/CME_CY1", #Brent
+  "CHRIS/CME_NG1", #Natgas
+  "CHRIS/CME_RB1", #RBOB
+  "CHRIS/ICE_O1", #Heating Oil
+  "CHRIS/LIFFE_C1",#COCOA
+  "CHRIS/CME_W1", #WHEAT
+  "CHRIS/CME_S1", #SOYBEANS
+  "CHRIS/ICE_SB4",#SUGAR
+  "CHRIS/LIFFE_EMA1", #CORN
+  "CHRIS/CME_CPO1" #Palm Oil
+)
+
+
+for (ticker in tickerListQuandl)
+{
+  if (cycleCounter >= 5)
+  {
+    Sys.sleep(64)
+    cycleCounter = 0
+  }
+
+  quoteData =Quandl(ticker, api_key="YOUR_API_KEY")
+  
+  tryCatch({
+  df<- as.data.frame( head(quoteData[, "Settle"],days))
+  }, error = function(e) {
+    df<- as.data.frame( head(quoteData[, "Close"],days))
+  })
+  colnames(df) = c(strsplit(ticker, "_")[[1]][2])
+  final_df <- cbind(final_df, df)
+  
+  print(ticker)
+  
+  cycleCounter = cycleCounter + 1
+  
+}
+
+colnames(final_df) <- c("ES1","DXY","Palladium","Gold","Silver","Copper","Zinc","WTI","Brent","Natgas","RBOB","Heating Oil","Cocoa","Wheat","Soybeans","Sugar","Corn","Palm Oil")
+
+summary(final_df)
+```
+
+
+#Correlations
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+corr <- round(cor(na.omit(final_df)), 1)
+p.mat <- cor_pmat(final_df)
+
+
+```
+
+#Plot Correlations
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggcorrplot(corr, hc.order = TRUE, 
+           lab = TRUE, 
+           lab_size = 3,
+           method="square", #square or circles
+           colors = c("tomato2", "white", "springgreen3"), tl.srt = 90,
+           ggtheme=theme_minimal())+
+  labs(title = "Commodity Correlations",
+       subtitle ="ES1 & DXY vs Commodities",
+       caption="Source: @tiagolvsantos")  + theme(plot.background = element_rect(fill = "white"), 
+    legend.background = element_rect(fill = "white"))
+
+```
